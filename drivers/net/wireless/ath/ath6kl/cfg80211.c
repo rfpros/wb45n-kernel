@@ -614,7 +614,8 @@ static int ath6kl_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 					vif->grp_crypto, vif->grp_crypto_len,
 					vif->ssid_len, vif->ssid,
 					vif->req_bssid, vif->ch_hint,
-					ar->connect_ctrl_flags, nw_subtype);
+					ar->connect_ctrl_flags | CONNECT_IGNORE_WPAx_GROUP_CIPHER, 
+					nw_subtype);
 
 	/* disable background scan if period is 0 */
 	if (sme->bg_scan_period == 0)
@@ -3845,3 +3846,9 @@ void ath6kl_cfg80211_destroy(struct ath6kl *ar)
 	wiphy_free(ar->wiphy);
 }
 
+/*tx power value is dbm */
+int ath6kl_get_txpower(struct wiphy *wiphy, int *dbm)
+{
+	ath6kl_cfg80211_get_txpower( wiphy, NULL, dbm );
+	return *dbm;
+}

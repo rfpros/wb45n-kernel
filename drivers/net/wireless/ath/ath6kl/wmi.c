@@ -84,6 +84,7 @@ enum { // keep this list in sync with the one from ath_access.c from the SDK
 	GETTXPOWER,
 	GETAPNAME,
 	GETAPIP,
+	GETFWSTR,
 } ATHEROS_CMD_GET_VALUES;
 
 #define AIRONET_CCX_IE   0x85
@@ -4027,6 +4028,8 @@ static int ath6kl_wmi_proc_events_vif(struct wmi *wmi, u16 if_idx, u16 cmd_id,
 
 static int ath6kl_wmi_proc_events(struct wmi *wmi, struct sk_buff *skb)
 {
+	struct ath6kl *ar = wmi->parent_dev;
+	struct ath6kl_vif *vif;
 	struct wmi_cmd_hdr *cmd;
 	int ret = 0;
 	u32 len;
@@ -4037,6 +4040,7 @@ static int ath6kl_wmi_proc_events(struct wmi *wmi, struct sk_buff *skb)
 	cmd = (struct wmi_cmd_hdr *) skb->data;
 	id = le16_to_cpu(cmd->cmd_id);
 	if_idx = le16_to_cpu(cmd->info1) & WMI_CMD_HDR_IF_ID_MASK;
+	vif = ath6kl_get_vif_by_index(ar, if_idx);
 
 	skb_pull(skb, sizeof(struct wmi_cmd_hdr));
 	datap = skb->data;
@@ -4071,6 +4075,8 @@ static int ath6kl_wmi_proc_events(struct wmi *wmi, struct sk_buff *skb)
 		break;
 	case WMI_REGDOMAIN_EVENTID:
 		ath6kl_dbg(ATH6KL_DBG_WMI, "WMI_REGDOMAIN_EVENTID\n");
+		if(vif && vif->sme_state != SME_CONNECTED)
+			ath6kl_wmi_send_radio_mode(wmi, if_idx);
 		ath6kl_wmi_regdomain_event(wmi, datap, len);
 		break;
 	case WMI_PSTREAM_TIMEOUT_EVENTID:
@@ -4277,8 +4283,6 @@ void ath6kl_wmi_send_radio_mode(struct wmi *wmi, u8 if_idx)
 	if(ar->laird.phy_mode == 0)
 		return;
 
-	ath6kl_wmi_send_buf_cmd(wmi, if_idx, WMI_SET_TX_SELECT_RATES_CMDID,
-							sizeof(struct wmi_set_tx_select_rates32_cmd), (u8*)&(ar->laird.rates32));
 	ath6kl_wmi_send_buf_cmd(wmi, if_idx, WMI_SET_HT_CAP_CMDID, sizeof(struct wmi_set_htcap_cmd),
 							(u8*)&(ar->laird.htcap_params_2ghz));
 	ath6kl_wmi_send_buf_cmd(wmi, if_idx, WMI_SET_HT_CAP_CMDID, sizeof(struct wmi_set_htcap_cmd),
@@ -4378,12 +4382,6 @@ static int ath6kl_genl_wmi_passthru (struct sk_buff *skb_2, struct genl_info *in
 					ar->lrssi_roam_threshold = t->lrssi_roam_threshold; // place holder 
 					}
 					break;
-				case WMI_SET_TX_SELECT_RATES_CMDID:
-					{
-					struct wmi_set_tx_select_rates32_cmd *rates = (struct wmi_set_tx_select_rates32_cmd*)p;
-					memcpy(&ar->laird.rates32, rates, sizeof(struct wmi_set_tx_select_rates32_cmd));
-					}
-					break;
 				case WMI_SET_HT_CAP_CMDID:
 					{
 					struct wmi_set_htcap_cmd *htcap = (struct wmi_set_htcap_cmd*)p;
@@ -4458,6 +4456,7 @@ static int ath6kl_genl_get_value (struct sk_buff *skb_2, struct genl_info *info)
 	struct ath6kl *ar;  
 	struct wmi *wmi = gwmi;	
 	struct nlattr *na;
+	char fwStr[80];
 
 	if ( gwmi == NULL )
 		return 0;
@@ -4488,7 +4487,8 @@ static int ath6kl_genl_get_value (struct sk_buff *skb_2, struct genl_info *info)
 				rc = nla_put_s32( skb, ATHEROS_ATTR_MSG, LAIRD_DRV_VERSION );
 				break;
 			case GETTXPOWER:
-				rc = nla_put_s32( skb, ATHEROS_ATTR_MSG, ar->tx_pwr );
+				ath6kl_get_txpower( ar->wiphy, c);
+				rc = nla_put_s32( skb, ATHEROS_ATTR_MSG, *c );
 				break;
 			case GETAPNAME:
 				rc = nla_put_string(skb, ATHEROS_ATTR_MSG, ar->laird.AP_Name);
@@ -4499,6 +4499,14 @@ static int ath6kl_genl_get_value (struct sk_buff *skb_2, struct genl_info *info)
 						ar->laird.AP_IP[1] << 16 |
 						ar->laird.AP_IP[2] << 8 |
 						ar->laird.AP_IP[3]);
+				break;
+			case GETFWSTR:
+				snprintf(fwStr, 80, "%s fw %s api %d%s",
+						ar->hw.name,
+						ar->wiphy->fw_version,
+						ar->fw_api,
+						test_bit(TESTMODE, &ar->flag) ? " testmode" : "");
+				rc = nla_put_string(skb, ATHEROS_ATTR_MSG, fwStr);
 				break;
 		}
 	}
