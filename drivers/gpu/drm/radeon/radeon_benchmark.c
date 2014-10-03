@@ -97,7 +97,7 @@ static void radeon_benchmark_move(struct radeon_device *rdev, unsigned size,
 	int time;
 
 	n = RADEON_BENCHMARK_ITERATIONS;
-	r = radeon_bo_create(rdev, size, PAGE_SIZE, true, sdomain, NULL, &sobj);
+	r = radeon_bo_create(rdev, size, PAGE_SIZE, true, sdomain, 0, NULL, &sobj);
 	if (r) {
 		goto out_cleanup;
 	}
@@ -109,7 +109,7 @@ static void radeon_benchmark_move(struct radeon_device *rdev, unsigned size,
 	if (r) {
 		goto out_cleanup;
 	}
-	r = radeon_bo_create(rdev, size, PAGE_SIZE, true, ddomain, NULL, &dobj);
+	r = radeon_bo_create(rdev, size, PAGE_SIZE, true, ddomain, 0, NULL, &dobj);
 	if (r) {
 		goto out_cleanup;
 	}
@@ -122,10 +122,7 @@ static void radeon_benchmark_move(struct radeon_device *rdev, unsigned size,
 		goto out_cleanup;
 	}
 
-	/* r100 doesn't have dma engine so skip the test */
-	/* also, VRAM-to-VRAM test doesn't make much sense for DMA */
-	/* skip it as well if domains are the same */
-	if ((rdev->asic->copy.dma) && (sdomain != ddomain)) {
+	if (rdev->asic->copy.dma) {
 		time = radeon_benchmark_do_move(rdev, size, saddr, daddr,
 						RADEON_BENCHMARK_COPY_DMA, n);
 		if (time < 0)
@@ -135,13 +132,15 @@ static void radeon_benchmark_move(struct radeon_device *rdev, unsigned size,
 						     sdomain, ddomain, "dma");
 	}
 
-	time = radeon_benchmark_do_move(rdev, size, saddr, daddr,
-					RADEON_BENCHMARK_COPY_BLIT, n);
-	if (time < 0)
-		goto out_cleanup;
-	if (time > 0)
-		radeon_benchmark_log_results(n, size, time,
-					     sdomain, ddomain, "blit");
+	if (rdev->asic->copy.blit) {
+		time = radeon_benchmark_do_move(rdev, size, saddr, daddr,
+						RADEON_BENCHMARK_COPY_BLIT, n);
+		if (time < 0)
+			goto out_cleanup;
+		if (time > 0)
+			radeon_benchmark_log_results(n, size, time,
+						     sdomain, ddomain, "blit");
+	}
 
 out_cleanup:
 	if (sobj) {
