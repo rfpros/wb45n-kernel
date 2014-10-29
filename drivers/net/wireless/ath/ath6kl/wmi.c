@@ -4395,8 +4395,13 @@ static struct genl_family atheros_fam = {
 	.maxattr = ATHEROS_ATTR_MAX,
 };
 
-static struct genl_multicast_group atheros_events_mcgrp = {
-	.name = "events",
+/* multicast groups */
+enum ath_multicast_groups {
+	ATH_MCGRP_EVENTS,
+};
+
+static struct genl_multicast_group atheros_events_mcgrp[] = {
+	[ATH_MCGRP_EVENTS] = { .name = "events", },
 };
 
 static struct wmi *gwmi = NULL;  // get access to wmi pointer for netlink entry point functions  FIXME: find alternative to this global!
@@ -4623,7 +4628,7 @@ static void ath6kl_wmi_event_multicast(enum wmi_cmd_id cmd_id, u8 *datap, int le
 	genlmsg_end(msg, hdr);
 
    	//send the message */
-	genlmsg_multicast(msg, 0, atheros_events_mcgrp.id, GFP_KERNEL);
+	genlmsg_multicast(&atheros_fam, msg, 0, ATH_MCGRP_EVENTS, GFP_KERNEL);
 		
 	return;
 
@@ -4646,7 +4651,7 @@ void ath6kl_drv_event_multicast(enum atheros_cmd_id cmd_id, unsigned int reason)
 		if(nla_put_u32(msg, ATHEROS_ATTR_MSG, reason))
 			goto nla_put_failure;
 		genlmsg_end(msg, hdr);
-		genlmsg_multicast(msg, 0, atheros_events_mcgrp.id, GFP_KERNEL);
+		genlmsg_multicast(&atheros_fam, msg, 0, ATH_MCGRP_EVENTS, GFP_KERNEL);
 	}
 
 	return;
@@ -4725,17 +4730,15 @@ struct genl_ops atheros_ops[] = {
 static int ath6kl_genl_init(void) 
 {
 	int rc;
-	
+
 	//LAIRD: adding event capture and handler
 	ath6kl_warn("INIT GENERIC NETLINK ATHEROS COM\n");
 
-	if ((rc = genl_register_family_with_ops(&atheros_fam, atheros_ops,
-			                                ARRAY_SIZE(atheros_ops))) != 0) {
+	if ((rc = _genl_register_family_with_ops_grps(&atheros_fam, atheros_ops, 
+			ARRAY_SIZE(atheros_ops), atheros_events_mcgrp, 
+			ARRAY_SIZE(atheros_events_mcgrp))) != 0) {
 		ath6kl_err("cannot register atheros netlink family\n");
-  	} else if ((rc = genl_register_mc_group(&atheros_fam, &atheros_events_mcgrp)) != 0) {
-		ath6kl_err("cannot register atheros events netlink multicast group\n");
-		genl_unregister_family(&atheros_fam);
-	}
+  	}
 
 	return rc;
 }
