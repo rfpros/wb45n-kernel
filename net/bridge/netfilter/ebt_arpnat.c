@@ -52,7 +52,7 @@
 #include <linux/udp.h>
 #include <linux/in.h>
 #include <net/checksum.h>
-
+#include <linux/version.h>
 
 #include "../br_private.h"
 
@@ -104,9 +104,8 @@ static struct mac2ip* find_mac_nat(struct hlist_head* head, const uint8_t* mac)
 {
 	struct mac2ip* tpos;
 	struct mac2ip* result = NULL;
-	struct hlist_node* pos;
 	struct hlist_node* n;
-	hlist_for_each_entry_safe(tpos, pos, n, head, node)
+	hlist_for_each_entry_safe(tpos, n, head, node)
 	{
 		if (memcmp(tpos->data.mac, mac, ETH_ALEN) == 0)
 		{
@@ -121,10 +120,9 @@ static struct mac2ip* find_ip_nat(struct hlist_head* head, uint32_t ip)
 {
 	struct mac2ip* tpos;
 	struct mac2ip* result = NULL;
-	struct hlist_node* pos;
 	struct hlist_node* n;
 
-	hlist_for_each_entry_safe(tpos, pos, n, head, node)
+	hlist_for_each_entry_safe(tpos, n, head, node)
 	{
 		if (tpos->data.ip == ip)
 		{
@@ -139,14 +137,13 @@ static struct mac2ip* find_ip_nat(struct hlist_head* head, uint32_t ip)
 static void clear_ip_nat(struct hlist_head* head, uint32_t ip)
 {
 	struct mac2ip* tpos;
-	struct hlist_node* pos;
 	struct hlist_node* n;
 
-	hlist_for_each_entry_safe(tpos, pos, n, head, node)
+	hlist_for_each_entry_safe(tpos, n, head, node)
 	{
 		if (tpos->data.ip == ip)
 		{
-			hlist_del(pos);
+			hlist_del(&tpos->node);
 	   		kfree(tpos);
 		}
 	}
@@ -155,11 +152,10 @@ static void clear_ip_nat(struct hlist_head* head, uint32_t ip)
 static void free_arp_nat(struct hlist_head* head)
 {
 	struct mac2ip* tpos;
-	struct hlist_node* pos;
 	struct hlist_node* n;
-	hlist_for_each_entry_safe(tpos, pos, n, head, node)
+	hlist_for_each_entry_safe(tpos, n, head, node)
 	{
-		hlist_del(pos);
+		hlist_del(&tpos->node);
 		kfree(tpos);
 	}
 }
@@ -225,12 +221,11 @@ static void arpnat_stop(struct seq_file *seq, void *v)
 static int arpnat_cache_show(struct seq_file *s, void *v)
 {
 	struct mac2ip* tpos;
-	struct hlist_node* pos;
 	struct hlist_node* n;
 	unsigned long flags;
 
 	spin_lock_irqsave(&arpnat_lock, flags);
-	hlist_for_each_entry_safe(tpos, pos, n, &arpnat_table, node)
+	hlist_for_each_entry_safe(tpos, n, &arpnat_table, node)
 	{
 		seq_printf(s, STRMAC"\t"STRIP"\n", MAC2STR(tpos->data.mac), IP2STR(tpos->data.ip));
 	}
@@ -365,7 +360,7 @@ static unsigned int ebt_target_arpnat(struct sk_buff *pskb, const struct xt_acti
 			}
 
 
-			if (inet_confirm_addr( __in_dev_get_rcu(in_br_port->br->dev) , 0, *arp_dip, RT_SCOPE_HOST))
+			if (inet_confirm_addr(dev_net(in_br_port->br->dev), __in_dev_get_rcu(in_br_port->br->dev) , 0, *arp_dip, RT_SCOPE_HOST))
 			{
 				if (debug)
 				{
@@ -458,7 +453,7 @@ static unsigned int ebt_target_arpnat(struct sk_buff *pskb, const struct xt_acti
 				entry = find_ip_nat(&arpnat_table, iph->daddr);
 				if (entry)
 				{
-					if (inet_confirm_addr( __in_dev_get_rcu(in_br_port->br->dev),  0, entry->data.ip, RT_SCOPE_HOST))
+					if (inet_confirm_addr(dev_net(in_br_port->br->dev), __in_dev_get_rcu(in_br_port->br->dev),  0, entry->data.ip, RT_SCOPE_HOST))
 					{
 						//to me
 						if (debug)
@@ -518,11 +513,11 @@ static unsigned int ebt_target_arpnat(struct sk_buff *pskb, const struct xt_acti
 
 				
 				/* do BR ip lookup */
-				if(inet_confirm_addr( __in_dev_get_rcu(out_br_port->br->dev), 0, *arp_dip, RT_SCOPE_HOST))
+				if(inet_confirm_addr(dev_net(out_br_port->br->dev), __in_dev_get_rcu(out_br_port->br->dev), 0, *arp_dip, RT_SCOPE_HOST))
 				{
 					return info->target;
 				}
-				if(!inet_confirm_addr( __in_dev_get_rcu(out_br_port->br->dev), 0, *arp_sip, RT_SCOPE_HOST))
+				if(!inet_confirm_addr(dev_net(out_br_port->br->dev), __in_dev_get_rcu(out_br_port->br->dev), 0, *arp_sip, RT_SCOPE_HOST))
 				{
 					spin_lock_irqsave(&arpnat_lock, flags);
 					update_arp_nat(&arpnat_table, arp_smac, *arp_sip);
@@ -618,17 +613,20 @@ static struct xt_target arpnat =
 static int __init init(void)
 {
 #ifdef CONFIG_PROC_FS
-	struct proc_dir_entry *proc_arpnat_info  = create_proc_entry("arpnat_info", 0, NULL);
-	struct proc_dir_entry *proc_arpnat_cache = create_proc_entry("arpnat_cache", 0, NULL);
+	struct proc_dir_entry *proc_arpnat_info;
+	struct proc_dir_entry *proc_arpnat_cache;
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
+	proc_arpnat_info = create_proc_entry("arpnat_info", 0, NULL);
+	proc_arpnat_cache = create_proc_entry("arpnat_cache", 0, NULL);
 	if(proc_arpnat_info)
-	{
 		proc_arpnat_info->proc_fops = &arpnat_info_fops;
-	}
-	
 	if(proc_arpnat_cache)
-	{
 		proc_arpnat_cache->proc_fops = &arpnat_cache_fops;
-	}
+#else
+	proc_arpnat_info = proc_create_data("arpnat_info", 0, NULL, &arpnat_info_fops, NULL);
+	proc_arpnat_cache = proc_create_data("arpnat_cache", 0, NULL, &arpnat_cache_fops, NULL);
+#endif
 #endif
 	return xt_register_target(&arpnat);
 }
