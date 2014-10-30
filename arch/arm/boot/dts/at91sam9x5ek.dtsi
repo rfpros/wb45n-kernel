@@ -27,7 +27,7 @@
 				slot@0 {
 					reg = <0>;
 					bus-width = <4>;
-					cd-gpios = <&pioD 15 GPIO_ACTIVE_HIGH>;
+					/* cd-gpios = <&pioD 15 GPIO_ACTIVE_HIGH>; */
 				};
 			};
 
@@ -40,7 +40,7 @@
 				slot@0 {
 					reg = <0>;
 					bus-width = <4>;
-					cd-gpios = <&pioD 14 GPIO_ACTIVE_HIGH>;
+					/* cd-gpios = <&pioD 14 GPIO_ACTIVE_HIGH>; */
 				};
 			};
 
