@@ -23,6 +23,16 @@
 		};
 	};
 
+	clocks {
+		slow_xtal {
+			clock-frequency = <32768>;
+		};
+
+		main_xtal {
+			clock-frequency = <12000000>;
+		};
+	};
+
 	ahb {
 		nand0: nand@40000000 {
 			nand-bus-width = <8>;
@@ -84,21 +94,6 @@
 				reg = <0x7fa0000 0x60000>;
 			};
 		};
-
-
-		apb {
-			usart3: serial@f8028000 {
-				compatible = "atmel,at91sam9260-usart";
-				reg = <0xf8028000 0x200>;
-				interrupts = <8 4 5>;
-				pinctrl-names = "default";
-				pinctrl-0 = <&pinctrl_usart3
-					&pinctrl_usart3_rts
-					&pinctrl_usart3_cts
-					>;
-				status = "okay";
-			};
-		};
 	};
 
 	gpio_keys {
@@ -108,7 +103,7 @@
 		irqbtn@pb18 {
 			label = "IRQBTN";
 			linux,code = <99>;
-			gpios = <&pioB 18 1>;
+			gpios = <&pioB 18 GPIO_ACTIVE_LOW>;
 			gpio-key,wakeup = <1>;
 		};
 	};
