@@ -41,7 +41,6 @@
 #include <asm/cacheflush.h>
 #include <asm/io.h>
 #include <asm/unaligned.h>
-#include <asm/gpio.h>
 
 #include "atmel-mci-regs.h"
 
@@ -2391,13 +2390,6 @@ static int __init atmci_probe(struct platform_device *pdev)
 			return PTR_ERR(pdata);
 		}
 	}
-
-	//at91_set_A_periph(AT91_PIN_PA15, 1); /* MCI0_DA0 */
-	//at91_set_A_periph(AT91_PIN_PA16, 1); /* MCI0_CMD */
-	//at91_set_A_periph(AT91_PIN_PA17, 0); /* MCI0_CLK */
-	//at91_set_A_periph(AT91_PIN_PA18, 1); /* MCI0_DA1 */
-	//at91_set_A_periph(AT91_PIN_PA19, 1); /* MCI0_DA2 */
-	//at91_set_A_periph(AT91_PIN_PA20, 1); /* MCI0_DA3 */
 
 	irq = platform_get_irq(pdev, 0);
 	if (irq < 0)
