@@ -739,5 +739,3 @@ int br_fdb_delete(struct sk_buff *skb, struct nlmsghdr *nlh, void *arg)
 
 	return err;
 }
-EXPORT_SYMBOL(br_fdb_get);
-
