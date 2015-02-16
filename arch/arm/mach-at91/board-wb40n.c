@@ -119,7 +119,7 @@ static void __init ssd40nbt_set_clk(struct ssd40nbt_info *info) {}
 /*
  * MACB Ethernet device
  */
-static struct at91_eth_data __initdata wb40n_macb_data = {
+static struct macb_platform_data __initdata wb40n_macb_data = {
 	.phy_irq_pin	= AT91_PIN_PB1,
 	.is_rmii	= 1,
 };
@@ -213,7 +213,7 @@ static void __init wb40n_add_device_nand(void)
 		wb40n_nand_smc_config.mode |= AT91_SMC_DBW_8;
 
 	/* configure chip-select 3 (NAND) */
-	sam9_smc_configure(3, &wb40n_nand_smc_config);
+	sam9_smc_configure(0, 3, &wb40n_nand_smc_config);
 
 	at91_add_device_nand(&wb40n_nand_data);
 }
