@@ -17,6 +17,7 @@
  */
 
 #include <linux/types.h>
+#include <linux/gpio.h>
 #include <linux/init.h>
 #include <linux/mm.h>
 #include <linux/module.h>
@@ -33,7 +34,6 @@
 #include <asm/mach/irq.h>
 
 #include <mach/board.h>
-#include <mach/gpio.h>
 #include <linux/gpio_keys.h>
 #include <linux/input.h>
 #include <mach/at91sam9_smc.h>
@@ -46,7 +46,6 @@ static void __init wb40n_init_early(void)
 {
 	/* Initialize processor: 18.432 MHz crystal */
 	at91_initialize(18432000);
-
 	/* DBGU on ttyS0. (Rx & Tx only) */
 	at91_register_uart(0, 0, 0);
 
@@ -60,7 +59,6 @@ static void __init wb40n_init_early(void)
 
 	/* USART3 on ttyS3 - Bluetooth interface. (Rx, Tx, RTS, CTS) */
 	at91_register_uart(AT91SAM9260_ID_US3, 3, ATMEL_UART_CTS | ATMEL_UART_RTS);
-
 	/* set serial console to ttyS0 (ie, DBGU) */
 	at91_set_serial_console(0);
 }
@@ -70,6 +68,8 @@ static void __init wb40n_init_early(void)
  */
 static struct at91_usbh_data __initdata wb40n_usbh_data = {
 	.ports		= 2,
+	.vbus_pin	= {-EINVAL, -EINVAL},
+	.overcurrent_pin= {-EINVAL, -EINVAL},
 };
 
 /*
@@ -78,7 +78,7 @@ static struct at91_usbh_data __initdata wb40n_usbh_data = {
 static struct at91_udc_data __initdata wb40n_udc_data = {
 	.vbus_pin	= AT91_PIN_PC21,
 	.vbus_active_low = 1,
-	.pullup_pin	= 0, /* pull-up driven by UDC on the AT91SAM9G20 */
+	.pullup_pin	= -EINVAL, /* pull-up driven by UDC on the AT91SAM9G20 */
 };
 
 /*
@@ -178,9 +178,11 @@ static struct mtd_partition __initdata wb40n_nand_partition[] = {
 static struct atmel_nand_data __initdata wb40n_nand_data = {
 	.ale		= 21,
 	.cle		= 22,
-//	.det_pin	= ... not connected
+	.det_pin	= -EINVAL,
 	.rdy_pin	= AT91_PIN_PC13,
 	.enable_pin	= AT91_PIN_PC14,
+	.ecc_mode	= NAND_ECC_SOFT,
+	.on_flash_bbt	= 1,
 	.parts		= wb40n_nand_partition,
 	.num_parts	= ARRAY_SIZE(wb40n_nand_partition),
 };
@@ -239,12 +241,12 @@ static struct mci_platform_data __initdata wb40n_mmc_data = {
 	.slot[0] = {
 		.bus_width	= 4,
 		.detect_pin	= AT91_PIN_PC5,
-		.wp_pin		= -ENODEV,
+		.wp_pin		= -EINVAL,
 	},
 	.slot[1] = {
 		.bus_width	= 4,
 //		.detect_pin	= AT91_PIN_PC11,
-		.wp_pin		= -ENODEV,
+		.wp_pin		= -EINVAL,
 	},
 
 };
@@ -253,6 +255,8 @@ static struct at91_mmc_data __initdata wb40n_mmc_data = {
 	.slot_b		= 1,
 	.wire4		= 1,
 //	.det_pin	= AT91_PIN_PC11,
+	.wp_pin		= -EINVAL,
+	.vcc_pin	= -EINVAL,
 };
 #endif
 
