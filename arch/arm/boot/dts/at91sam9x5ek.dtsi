@@ -27,6 +27,7 @@
 				slot@0 {
 					reg = <0>;
 					bus-width = <4>;
+					cd-gpios = <&pioD 15 GPIO_ACTIVE_HIGH>;
 				};
 			};
 
@@ -39,6 +40,7 @@
 				slot@0 {
 					reg = <0>;
 					bus-width = <4>;
+					cd-gpios = <&pioD 14 GPIO_ACTIVE_HIGH>;
 				};
 			};
 
@@ -110,12 +112,11 @@
 
 		usb0: ohci@00600000 {
 			status = "okay";
-			num-ports = <2>;
-			atmel,vbus-gpio = <
-					   &pioB 12 GPIO_ACTIVE_HIGH
-					   &pioA 31 GPIO_ACTIVE_HIGH
+			num-ports = <3>;
+			atmel,vbus-gpio = <0 /* &pioD 18 GPIO_ACTIVE_LOW *//* Activate to have access to port A */
+					   &pioD 19 GPIO_ACTIVE_LOW
+					   &pioD 20 GPIO_ACTIVE_LOW
 					  >;
-			atmel,oc-gpio = <&pioB 13 GPIO_ACTIVE_LOW>;
 		};
 
 		usb1: ehci@00700000 {
@@ -123,8 +124,18 @@
 		};
 	};
 
-	atheros {
-		compatible = "atheros,ath6kl";
-		atheros,board-id = "SD32";
+	sound {
+		compatible = "atmel,sam9x5-wm8731-audio";
+
+		atmel,model = "wm8731 @ AT91SAM9X5EK";
+
+		atmel,audio-routing =
+			"Headphone Jack", "RHPOUT",
+			"Headphone Jack", "LHPOUT",
+			"LLINEIN", "Line In Jack",
+			"RLINEIN", "Line In Jack";
+
+		atmel,ssc-controller = <&ssc0>;
+		atmel,audio-codec = <&wm8731>;
 	};
 };

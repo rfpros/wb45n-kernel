@@ -556,7 +556,15 @@
 							 AT91_PIOD 2 AT91_PERIPH_A AT91_PINCTRL_NONE	/* PD2 periph A Address Latch Enable */
 							 AT91_PIOD 3 AT91_PERIPH_A AT91_PINCTRL_NONE	/* PD3 periph A Command Latch Enable */
 							 AT91_PIOD 4 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* PD4 gpio Chip Enable pin pull_up */
-							 AT91_PIOD 5 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP>;	/* PD5 gpio RDY/BUSY pin pull_up */
+							 AT91_PIOD 5 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* PD5 gpio RDY/BUSY pin pull_up */
+							 AT91_PIOD 6 AT91_PERIPH_A AT91_PINCTRL_NONE	/* PD6 periph A Data bit 0 */
+							 AT91_PIOD 7 AT91_PERIPH_A AT91_PINCTRL_NONE	/* PD7 periph A Data bit 1 */
+							 AT91_PIOD 8 AT91_PERIPH_A AT91_PINCTRL_NONE	/* PD8 periph A Data bit 2 */
+							 AT91_PIOD 9 AT91_PERIPH_A AT91_PINCTRL_NONE	/* PD9 periph A Data bit 3 */
+							 AT91_PIOD 10 AT91_PERIPH_A AT91_PINCTRL_NONE	/* PD10 periph A Data bit 4 */
+							 AT91_PIOD 11 AT91_PERIPH_A AT91_PINCTRL_NONE	/* PD11 periph A Data bit 5 */
+							 AT91_PIOD 12 AT91_PERIPH_A AT91_PINCTRL_NONE	/* PD12 periph A Data bit 6 */
+							 AT91_PIOD 13 AT91_PERIPH_A AT91_PINCTRL_NONE>;	/* PD13 periph A Data bit 7 */
 					};
 
 					pinctrl_nand_16bits: nand_16bits-0 {
@@ -1055,8 +1063,8 @@
 				#address-cells = <1>;
 				#size-cells = <0>;
 				compatible = "atmel,at91sam9rl-udc";
-				reg = <0x00500000 0x100000
-				       0xf803c000 0x4000>;
+				reg = <0x00500000 0x80000
+				       0xf803c000 0x400>;
 				interrupts = <23 IRQ_TYPE_LEVEL_HIGH 0>;
 				clocks = <&utmi>, <&udphs_clk>;
 				clock-names = "hclk", "pclk";
@@ -1149,7 +1157,7 @@
 			reg = <0x40000000 0x10000000
 			       0xffffe000 0x600		/* PMECC Registers */
 			       0xffffe600 0x200		/* PMECC Error Location Registers */
-			       0x00100000 0x100000	/* PMECC looup table in ROM code  */
+			       0x00108000 0x18000	/* PMECC looup table in ROM code  */
 			      >;
 			atmel,pmecc-lookup-table-offset = <0x0 0x8000>;
 			atmel,nand-addr-offset = <21>;

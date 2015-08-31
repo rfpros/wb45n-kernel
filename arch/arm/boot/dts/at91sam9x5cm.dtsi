@@ -34,78 +34,74 @@
 	};
 
 	ahb {
+		apb {
+			pinctrl@fffff400 {
+				1wire_cm {
+					pinctrl_1wire_cm: 1wire_cm-0 {
+						atmel,pins = <AT91_PIOB 18 AT91_PERIPH_GPIO AT91_PINCTRL_MULTI_DRIVE>; /* PB18 multidrive, conflicts with led */
+					};
+				};
+			};
+		};
+
 		nand0: nand@40000000 {
 			nand-bus-width = <8>;
 			nand-ecc-mode = "hw";
-			atmel,has-pmecc;	/* enable PMECC */
-			atmel,pmecc-cap = <4>;
+			atmel,has-pmecc;	/* Enable PMECC */
+			atmel,pmecc-cap = <2>;
 			atmel,pmecc-sector-size = <512>;
-			atmel,pmecc-lookup-table-offset = <0x8000 0x10000>;
 			nand-on-flash-bbt;
 			status = "okay";
 
 			at91bootstrap@0 {
 				label = "at91bootstrap";
-				reg = <0x0 0x20000>;
+				reg = <0x0 0x40000>;
 			};
 
-			uboot@20000 {
+			uboot@40000 {
 				label = "u-boot";
-				reg = <0x20000 0x80000>;
-			};
-
-			ubootenv@a0000 {
-				label = "U-Boot Env";
-				reg = <0xa0000 0x20000>;
+				reg = <0x40000 0x80000>;
 			};
 
 			ubootenv@c0000 {
-				label = "U-Boot Redund Env";
-				reg = <0xc0000 0x20000>;
+				label = "U-Boot Env";
+				reg = <0xc0000 0x140000>;
 			};
 
-			kernel-a@e0000 {
-				label = "kernel-a";
-				reg = <0xe0000 0x280000>;
+			kernel@200000 {
+				label = "kernel";
+				reg = <0x200000 0x600000>;
 			};
 
-			kernel-b@360000 {
-				label = "kernel-b";
-				reg = <0x360000 0x280000>;
-			};
-
-			rootfs-a@5e0000 {
-				label = "rootfs-a";
-				reg = <0x5e0000 0x2600000>;
-			};
-
-			rootfs-b@2be0000 {
-				label = "rootfs-b";
-				reg = <0x2be0000 0x2600000>;
-			};
-
-			user@51e0000 {
-				label = "user";
-				reg = <0x51e0000 0x2dc0000>;
-			};
-
-			logs@7fa0000 {
-				label = "logs";
-				reg = <0x7fa0000 0x60000>;
+			rootfs@800000 {
+				label = "rootfs";
+				reg = <0x800000 0x1f800000>;
 			};
 		};
 	};
 
-	gpio_keys {
-		compatible = "gpio-keys";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		irqbtn@pb18 {
-			label = "IRQBTN";
-			linux,code = <99>;
+	leds {
+		compatible = "gpio-leds";
+
+		pb18 {
+			label = "pb18";
 			gpios = <&pioB 18 GPIO_ACTIVE_LOW>;
-			gpio-key,wakeup = <1>;
+			linux,default-trigger = "heartbeat";
 		};
+
+		pd21 {
+			label = "pd21";
+			gpios = <&pioD 21 GPIO_ACTIVE_HIGH>;
+		};
+	};
+
+	1wire_cm {
+		compatible = "w1-gpio";
+		gpios = <&pioB 18 GPIO_ACTIVE_HIGH>;
+		linux,open-drain;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_1wire_cm>;
+		status = "okay";
 	};
 
 };
