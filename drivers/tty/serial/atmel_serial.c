@@ -1974,6 +1974,14 @@ static void atmel_set_termios(struct uart_port *port, struct ktermios *termios,
 	if (quot > 65535) {	/* BRGR is 16-bit, so switch to slower clock */
 		quot /= 8;
 		mode |= ATMEL_US_USCLKS_MCK_DIV8;
+	} else if (port->custom_divisor == 1 ){
+		//This is a hack to force the baud rate generator to run at 921600
+		//We can use the setserial utility to turn this feature on by setting the custom divisor to 1
+		//Turn on over sampling and force the divisor to 9.
+		//Baud rate = clock/(8*(2-OVER)*CD)
+		//66000000/8(2-1)9 = 916666
+		mode |= ATMEL_US_OVER;
+		quot = 9;
 	}
 
 	/* byte size */
