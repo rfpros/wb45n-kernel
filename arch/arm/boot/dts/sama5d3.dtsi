@@ -182,6 +182,8 @@
 				compatible = "atmel,at91sam9260-usart";
 				reg = <0xf001c000 0x100>;
 				interrupts = <12 IRQ_TYPE_LEVEL_HIGH 5>;
+				atmel,use-dma-rx;
+				atmel,use-dma-tx;
 				dmas = <&dma0 2 AT91_DMA_CFG_PER_ID(3)>,
 				       <&dma0 2 (AT91_DMA_CFG_PER_ID(4) | AT91_DMA_CFG_FIFOCFG_ASAP)>;
 				dma-names = "tx", "rx";
@@ -196,6 +198,8 @@
 				compatible = "atmel,at91sam9260-usart";
 				reg = <0xf0020000 0x100>;
 				interrupts = <13 IRQ_TYPE_LEVEL_HIGH 5>;
+				atmel,use-dma-rx;
+				atmel,use-dma-tx;
 				dmas = <&dma0 2 AT91_DMA_CFG_PER_ID(5)>,
 				       <&dma0 2 (AT91_DMA_CFG_PER_ID(6) | AT91_DMA_CFG_FIFOCFG_ASAP)>;
 				dma-names = "tx", "rx";
