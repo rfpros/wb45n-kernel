@@ -147,33 +147,29 @@
 
 			kernel-a@e0000 {
 				label = "kernel-a";
-				reg = <0xe0000 0x280000>;
+				reg = <0xe0000 0x500000>;
 			};
 
-			kernel-b@360000 {
+			kernel-b@5e0000 {
 				label = "kernel-b";
-				reg = <0x360000 0x280000>;
+				reg = <0x5e0000 0x500000>;
 			};
 
-			rootfs-a@5e0000 {
+			rootfs-a@ae0000 {
 				label = "rootfs-a";
-				reg = <0x5e0000 0x2600000>;
+				reg = <0xae0000 0x3000000>;
 			};
 
-			rootfs-b@2be0000 {
+			rootfs-b@3ae0000 {
 				label = "rootfs-b";
-				reg = <0x2be0000 0x2600000>;
+				reg = <0x3ae0000 0x3000000>;
 			};
 
-			user@51e0000 {
+			user@6ae0000 {
 				label = "user";
-				reg = <0x51e0000 0x2dc0000>;
+				reg = <0x6ae0000 0x14e0000>;
 			};
 
-			logs@7fa0000 {
-				label = "logs";
-				reg = <0x7fa0000 0x60000>;
-			};
 		};
 
 		usb0: gadget@00500000 {
