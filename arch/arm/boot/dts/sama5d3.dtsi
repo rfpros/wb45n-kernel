@@ -1087,7 +1087,6 @@
 					usart1_clk: usart1_clk {
 						#clock-cells = <0>;
 						reg = <13>;
-						atmel,clk-output-range = <0 66000000>;
 					};
 
 					usart2_clk: usart2_clk {
