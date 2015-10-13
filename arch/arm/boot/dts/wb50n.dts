@@ -99,10 +99,31 @@
 				status = "okay";
 			};
 
+			/* On BB40 this port is labeled UART1 */
+			usart0: serial@f001c000 {
+				dmas = <0>, <0>;	/*  Do not use DMA for usart0 */
+				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_usart0 &pinctrl_usart0_rts_cts>;
+				status = "okay";
+			};
+
+			/* On BB40 this port is labeled UART0 */
 			usart1: serial@f0020000 {
 				dmas = <0>, <0>;	/*  Do not use DMA for usart1 */
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_usart1 &pinctrl_usart1_rts_cts>;
+				dtr-gpios = <&pioB 13 GPIO_ACTIVE_LOW>;
+				dsr-gpios = <&pioD 11 GPIO_ACTIVE_LOW>;
+				dcd-gpios = <&pioD 7 GPIO_ACTIVE_LOW>;
+				rng-gpios = <&pioD 8 GPIO_ACTIVE_LOW>;
+				status = "okay";
+			};
+
+			/* USART3 is direct-connect to the Bluetooth UART on the radio SIP */
+			usart3: serial@f8024000 {
+				dmas = <0>, <0>;	/*  Do not use DMA for usart3 */
+				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_usart3 &pinctrl_usart3_rts_cts>;
 				status = "okay";
 			};
 
