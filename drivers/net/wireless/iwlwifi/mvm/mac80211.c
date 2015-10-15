@@ -2373,6 +2373,7 @@ static void iwl_mvm_stop_ap_ibss(struct ieee80211_hw *hw,
 		iwl_mvm_remove_time_event(mvm, mvmvif,
 					  &mvmvif->time_event_data);
 		RCU_INIT_POINTER(mvm->csa_vif, NULL);
+		mvmvif->csa_countdown = false;
 	}
 
 	if (rcu_access_pointer(mvm->csa_tx_blocked_vif) == vif) {
@@ -2616,7 +2617,7 @@ static void iwl_mvm_sta_pre_rcu_remove(struct ieee80211_hw *hw,
 
 	if (mvm_sta->vif->type == NL80211_IFTYPE_AP) {
 		mvmvif->ap_assoc_sta_count--;
-		iwl_mvm_mac_ctxt_cmd_ap(mvm, vif, FW_CTXT_ACTION_MODIFY);
+		iwl_mvm_mac_ctxt_changed(mvm, vif, false, NULL);
 	}
 
 	mutex_unlock(&mvm->mutex);
