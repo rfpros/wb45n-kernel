@@ -3522,13 +3522,12 @@ static void StartHCIEventACL(USBDeviceInformation_t *USBDeviceInformationPtr, in
    USBBufferInformation_t *USBBufferInformationPtr;
 
    DEBUGPRINT(KERN_ERR "%s : Enter\n", __FUNCTION__);
-
    /* Check that the parameters passed in look somewhat valid.          */
    if(FilePointer)
    {
       /* Obtain the device minor number. This is equivalent to the INode*/
       /* parameter from kernel versions prior to 2.6.11.                */
-      DevNum = MINOR(FilePointer->f_dentry->d_inode->i_rdev);
+      DevNum = MINOR(file_inode(FilePointer)->i_rdev);
 
       spin_lock_irqsave(&ContextInformationSpinLock, cflags);
 
