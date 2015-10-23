@@ -121,6 +121,15 @@
 				status = "okay";
 			};
 
+			i2c0: i2c@f0014000 {
+				status = "okay";
+			};
+
+			spi1: spi@f8008000 {
+				cs-gpios = <&pioC 25 0>, <0>, <0>, <0>;
+				status = "okay";
+			};
+
 			watchdog@fffffe40 {
 				status = "okay";
 			};
