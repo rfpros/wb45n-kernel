@@ -143,7 +143,7 @@
 			status = "okay";
 
 			at91bootstrap@0 {
-				label = "at91bootstrap";
+				label = "at91bs";
 				reg = <0x0 0x20000>;
 			};
 
@@ -153,12 +153,12 @@
 			};
 
 			ubootenv@a0000 {
-				label = "U-Boot Env";
+				label = "u-boot-env";
 				reg = <0xa0000 0x20000>;
 			};
 
 			ubootenv@c0000 {
-				label = "U-Boot Redund Env";
+				label = "redund-env";
 				reg = <0xc0000 0x20000>;
 			};
 
