@@ -1573,6 +1573,7 @@ static int acpi_ec_add(struct acpi_device *device)
 
 		if (boot_ec && ec->command_addr == boot_ec->command_addr &&
 		    ec->data_addr == boot_ec->data_addr) {
+			boot_ec_is_ecdt = false;
 			/*
 			 * Trust PNP0C09 namespace location rather than
 			 * ECDT ID. But trust ECDT GPE rather than _GPE
@@ -1592,11 +1593,8 @@ static int acpi_ec_add(struct acpi_device *device)
 
 	if (ec == boot_ec)
 		acpi_handle_info(boot_ec->handle,
-				 "Boot %s EC initialization complete\n",
+				 "Boot %s EC used to handle transactions and events\n",
 				 boot_ec_is_ecdt ? "ECDT" : "DSDT");
-
-	acpi_handle_info(ec->handle,
-			 "EC: Used to handle transactions and events\n");
 
 	device->driver_data = ec;
 
@@ -1964,23 +1962,35 @@ void acpi_ec_set_gpe_wake_mask(u8 action)
 		acpi_set_gpe_wake_mask(NULL, first_ec->gpe, action);
 }
 
-bool acpi_ec_other_gpes_active(void)
-{
-	return acpi_any_gpe_status_set(first_ec ? first_ec->gpe : U32_MAX);
-}
-
 bool acpi_ec_dispatch_gpe(void)
 {
 	u32 ret;
 
 	if (!first_ec)
+		return acpi_any_gpe_status_set(U32_MAX);
+
+	/*
+	 * Report wakeup if the status bit is set for any enabled GPE other
+	 * than the EC one.
+	 */
+	if (acpi_any_gpe_status_set(first_ec->gpe))
+		return true;
+
+	if (ec_no_wakeup)
 		return false;
 
+	/*
+	 * Dispatch the EC GPE in-band, but do not report wakeup in any case
+	 * to allow the caller to process events properly after that.
+	 */
 	ret = acpi_dispatch_gpe(NULL, first_ec->gpe);
 	if (ret == ACPI_INTERRUPT_HANDLED) {
 		pm_pr_dbg("EC GPE dispatched\n");
-		return true;
+
+		/* Flush the event and query workqueues. */
+		acpi_ec_flush_work();
 	}
+
 	return false;
 }
 #endif /* CONFIG_PM_SLEEP */
