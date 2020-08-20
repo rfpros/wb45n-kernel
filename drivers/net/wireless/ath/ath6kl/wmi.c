@@ -4696,3 +4696,24 @@ static void __lrd_set_AP_IP(struct wmi *wmi, const char *apip)
 		memcpy(ar->laird.AP_IP, apip, 4);
 	}
 }
+
+int ath6kl_wmi_set_rsn_cap_cmd(struct wmi *wmi, u8 if_idx,
+		u16 rsn_cap)
+{
+	struct sk_buff *skb;
+	struct wmi_rsn_cap_cmd *cmd;
+	int ret;
+
+	skb = ath6kl_wmi_get_new_buf(sizeof(*cmd));
+	if (!skb)
+		return -ENOMEM;
+
+	cmd = (struct wmi_rsn_cap_cmd *) skb->data;
+	cmd->rsn_cap = cpu_to_le16(rsn_cap);
+
+#define _WMI_SET_RSN_CAP_CMDID 0xF082
+	ret = ath6kl_wmi_cmd_send(wmi, if_idx, skb, _WMI_SET_RSN_CAP_CMDID,
+			NO_SYNC_WMIFLAG);
+
+	return ret;
+}
