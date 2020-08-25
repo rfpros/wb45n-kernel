@@ -2373,6 +2373,49 @@ int ath6kl_wmi_addkey_cmd(struct wmi *wmi, u8 if_idx, u8 key_index,
 	return ret;
 }
 
+#ifdef ATH6KL_SUPPORT_11W
+int ath6kl_wmi_addigtk_cmd(struct wmi *wmi, u8 if_idx, u8 key_index,
+						   enum ath6kl_crypto_type key_type,
+						   u8 key_usage, u8 key_len,
+						   u8 *key_rsc, unsigned int key_rsc_len,
+						   u8 *key_material,
+						   u8 key_op_ctrl, u8 *mac_addr,
+						   enum wmi_sync_flag sync_flag)
+{
+	struct sk_buff *skb;
+	struct wmi_add_igtk_key_cmd *cmd;
+	int ret;
+
+	ath6kl_dbg(ATH6KL_DBG_WMI, "addigtk cmd: key_index=%u key_type=%d "
+			   "key_usage=%d key_len=%d key_op_ctrl=%d\n",
+			   key_index, key_type, key_usage, key_len, key_op_ctrl);
+
+	if ((key_index > WMI_MAX_SUPPORT_11W_KEY_INDEX) || (key_len > WMI_MAX_KEY_LEN) ||
+		(key_material == NULL) || key_rsc_len > 6)
+		return -EINVAL;
+
+	if ((WEP_CRYPT != key_type) && (NULL == key_rsc))
+		return -EINVAL;
+
+	skb = ath6kl_wmi_get_new_buf(sizeof(*cmd));
+	if (!skb)
+		return -ENOMEM;
+
+	cmd = (struct wmi_add_igtk_key_cmd *) skb->data;
+	cmd->key_index = key_index;
+	cmd->key_len = key_len;
+	memcpy(cmd->key, key_material, key_len);
+	if (key_rsc != NULL)
+		memcpy(cmd->key_rsc, key_rsc, key_rsc_len);
+
+#define _WMI_SET_IGTK_CMDID 0xF084
+	ret = ath6kl_wmi_cmd_send(wmi, if_idx, skb, _WMI_SET_IGTK_CMDID,
+							  sync_flag);
+
+	return ret;
+}
+#endif
+
 int ath6kl_wmi_add_krk_cmd(struct wmi *wmi, u8 if_idx, const u8 *krk)
 {
 	struct sk_buff *skb;

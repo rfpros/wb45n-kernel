@@ -650,7 +650,11 @@ struct ath6kl_vif {
 	u16 bss_ch;
 	u8 bss_is_40mhz;
 	struct ath6kl_wep_key wep_key_list[WMI_MAX_KEY_INDEX + 1];
+#ifdef ATH6KL_SUPPORT_11W
+	struct ath6kl_key keys[WMI_MAX_SUPPORT_11W_KEY_INDEX + 1];
+#else
 	struct ath6kl_key keys[WMI_MAX_KEY_INDEX + 1];
+#endif
 	struct aggr_info *aggr_cntxt;
 	struct ath6kl_htcap htcap[NUM_NL80211_BANDS];
 

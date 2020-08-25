@@ -298,6 +298,21 @@ static int ath6kl_set_cipher(struct ath6kl_vif *vif, u32 cipher, bool ucast)
 	return 0;
 }
 
+#ifdef ATH6KL_SUPPORT_11W
+static int ath6kl_supports_11w(struct ath6kl *ar)
+{
+	if (ar->target_type == TARGET_TYPE_AR6004)
+		return 1;
+	return 0;
+}
+static int ath6kl_max_key_index(struct ath6kl *ar)
+{
+	if (ath6kl_supports_11w(ar))
+		return WMI_MAX_SUPPORT_11W_KEY_INDEX;
+	return WMI_MAX_KEY_INDEX;
+}
+#endif
+
 static void ath6kl_set_key_mgmt(struct ath6kl_vif *vif, u32 key_mgmt)
 {
 	ath6kl_dbg(ATH6KL_DBG_WLAN_CFG, "%s: 0x%x\n", __func__, key_mgmt);
@@ -312,6 +327,30 @@ static void ath6kl_set_key_mgmt(struct ath6kl_vif *vif, u32 key_mgmt)
 			vif->auth_mode = WPA_AUTH_CCKM;
 		else if (vif->auth_mode == WPA2_AUTH)
 			vif->auth_mode = WPA2_AUTH_CCKM;
+#ifdef ATH6KL_SUPPORT_11W
+	} else if (key_mgmt == WLAN_AKM_SUITE_8021X_SHA256) {
+		if (!ath6kl_supports_11w(vif->ar)) {
+			ath6kl_err("%s: key_mgmt %x not supported\n", __func__, key_mgmt);
+			return ;
+		} else
+		if (vif->auth_mode == WPA_AUTH){
+			ath6kl_err("%s: auth_mode %x not supported key_mgmt %x\n", __func__, vif->auth_mode,key_mgmt);
+			return ;
+		}
+		else if (vif->auth_mode == WPA2_AUTH)
+			vif->auth_mode = WPA2_AUTH_SHA256;
+	} else if (key_mgmt == WLAN_AKM_SUITE_PSK_SHA256) {
+		if (!ath6kl_supports_11w(vif->ar)) {
+			ath6kl_err("%s: key_mgmt %x not supported\n", __func__, key_mgmt);
+			return ;
+		} else
+		if (vif->auth_mode == WPA_AUTH){
+			ath6kl_err("%s: auth_mode %x not supported key_mgmt %x\n", __func__, vif->auth_mode,key_mgmt);
+			return ;
+		}
+		else if (vif->auth_mode == WPA2_AUTH)
+			vif->auth_mode = WPA2_PSK_AUTH_SHA256;
+#endif
 	} else if (key_mgmt != WLAN_AKM_SUITE_8021X) {
 		vif->auth_mode = NONE_AUTH;
 	}
@@ -578,6 +617,19 @@ static int ath6kl_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 	memset(vif->req_bssid, 0, sizeof(vif->req_bssid));
 	if (sme->bssid && !is_broadcast_ether_addr(sme->bssid))
 		memcpy(vif->req_bssid, sme->bssid, sizeof(vif->req_bssid));
+
+#ifdef ATH6KL_SUPPORT_11W
+	if (ath6kl_supports_11w(ar))
+	{
+		u16 rsn_cap = 0;
+		if ( sme->mfp == NL80211_MFP_REQUIRED ) {
+			rsn_cap = 0xc0;
+		} else if ( sme->mfp == NL80211_MFP_OPTIONAL ) {
+			rsn_cap = 0x80;
+		}
+		ath6kl_wmi_set_rsn_cap_cmd(ar->wmi, vif->fw_vif_idx, rsn_cap);
+	}
+#endif
 
 	ath6kl_set_wpa_version(vif, sme->crypto.wpa_versions);
 
@@ -1172,6 +1224,7 @@ static int ath6kl_cfg80211_add_key(struct wiphy *wiphy, struct net_device *ndev,
 	int seq_len;
 	u8 key_usage;
 	u8 key_type;
+	u8 max_key_index = WMI_MAX_KEY_INDEX;
 
 	if (!ath6kl_cfg80211_ready(vif))
 		return -EIO;
@@ -1183,7 +1236,14 @@ static int ath6kl_cfg80211_add_key(struct wiphy *wiphy, struct net_device *ndev,
 					      params->key);
 	}
 
-	if (key_index > WMI_MAX_KEY_INDEX) {
+#ifdef ATH6KL_SUPPORT_11W
+	if (WLAN_CIPHER_SUITE_AES_CMAC == params->cipher)
+	{
+		if (ath6kl_supports_11w(ar))
+			max_key_index = WMI_MAX_SUPPORT_11W_KEY_INDEX;
+	}
+#endif
+	if (key_index > max_key_index) {
 		ath6kl_dbg(ATH6KL_DBG_WLAN_CFG,
 			   "%s: key index %d out of bounds\n", __func__,
 			   key_index);
@@ -1236,7 +1296,13 @@ static int ath6kl_cfg80211_add_key(struct wiphy *wiphy, struct net_device *ndev,
 	case WLAN_CIPHER_SUITE_SMS4:
 		key_type = WAPI_CRYPT;
 		break;
-
+#ifdef ATH6KL_SUPPORT_11W
+	case WLAN_CIPHER_SUITE_AES_CMAC:
+		if (!ath6kl_supports_11w(ar))
+			return -ENOTSUPP;
+		key_type = AES_128_CMAC_CRYPT;
+		break;
+#endif
 	default:
 		return -ENOTSUPP;
 	}
@@ -1285,6 +1351,15 @@ static int ath6kl_cfg80211_add_key(struct wiphy *wiphy, struct net_device *ndev,
 		return 0;
 	}
 
+#ifdef ATH6KL_SUPPORT_11W
+	if (AES_128_CMAC_CRYPT == key_type) {
+		return ath6kl_wmi_addigtk_cmd(ar->wmi, vif->fw_vif_idx, key_index,
+				key_type, key_usage, key->key_len,
+				key->seq, key->seq_len, key->key,
+				KEY_OP_INIT_VAL,
+				(u8 *) mac_addr, SYNC_BOTH_WMIFLAG);
+	}
+#endif
 	return ath6kl_wmi_addkey_cmd(ar->wmi, vif->fw_vif_idx, key_index,
 				     key_type, key_usage, key->key_len,
 				     key->seq, key->seq_len, key->key,
@@ -1304,7 +1379,11 @@ static int ath6kl_cfg80211_del_key(struct wiphy *wiphy, struct net_device *ndev,
 	if (!ath6kl_cfg80211_ready(vif))
 		return -EIO;
 
+#ifdef ATH6KL_SUPPORT_11W
+	if (key_index > ath6kl_max_key_index(ar)) {
+#else
 	if (key_index > WMI_MAX_KEY_INDEX) {
+#endif
 		ath6kl_dbg(ATH6KL_DBG_WLAN_CFG,
 			   "%s: key index %d out of bounds\n", __func__,
 			   key_index);
@@ -1410,6 +1489,72 @@ static int ath6kl_cfg80211_set_default_key(struct wiphy *wiphy,
 				     KEY_OP_INIT_VAL, NULL,
 				     SYNC_BOTH_WMIFLAG);
 }
+
+#ifdef ATH6KL_SUPPORT_11W
+static int ath6kl_cfg80211_set_default_mgmt_key(struct wiphy *wiphy,
+					   struct net_device *ndev,
+					   u8 key_index)
+{
+	struct ath6kl *ar = ath6kl_priv(ndev);
+	struct ath6kl_vif *vif = netdev_priv(ndev);
+	struct ath6kl_key *key = NULL;
+	u8 key_usage;
+	enum ath6kl_crypto_type key_type = NONE_CRYPT;
+	int ret;
+
+	ath6kl_dbg(ATH6KL_DBG_WLAN_CFG, "%s: index %d\n", __func__, key_index);
+
+	if (!ath6kl_supports_11w(ar))
+		return -ENOTSUPP;
+
+	if (!ath6kl_cfg80211_ready(vif))
+	{
+		return -EIO;
+	}
+
+	if (key_index <= WMI_MAX_KEY_INDEX ||
+		key_index > WMI_MAX_SUPPORT_11W_KEY_INDEX)
+	{
+		ath6kl_dbg(ATH6KL_DBG_WLAN_CFG,
+			   "%s: key index %d out of bounds\n",
+			   __func__, key_index);
+		return -ENOENT;
+	}
+
+	if (!vif->keys[key_index].key_len) {
+		ath6kl_dbg(ATH6KL_DBG_WLAN_CFG, "%s: invalid key index %d\n",
+			   __func__, key_index);
+		return -EINVAL;
+	}
+
+	key = &vif->keys[key_index];
+	key_usage = GROUP_USAGE;
+
+	switch (key->cipher) {
+	case WLAN_CIPHER_SUITE_AES_CMAC:
+		key_type = AES_128_CMAC_CRYPT;
+		break;
+	default:
+		return -EINVAL;
+		break;
+	}
+
+	if (vif->next_mode == AP_NETWORK && !test_bit(CONNECTED, &vif->flags))
+	{
+		return 0; /* Delay until AP mode has been started */
+	}
+
+	ret =  ath6kl_wmi_addigtk_cmd(ar->wmi, vif->fw_vif_idx,
+				     key_index,
+				     key_type, key_usage,
+				     key->key_len, key->seq, key->seq_len,
+				     key->key,
+				     KEY_OP_INIT_VAL, NULL,
+				     SYNC_BOTH_WMIFLAG);
+
+	return ret;
+}
+#endif /* ATH6KL_SUPPORT_11W */
 
 void ath6kl_cfg80211_tkip_micerr_event(struct ath6kl_vif *vif, u8 keyid,
 				       bool ismcast)
@@ -1759,6 +1904,18 @@ static const u32 cipher_suites[] = {
 	CCKM_KRK_CIPHER_SUITE,
 	WLAN_CIPHER_SUITE_SMS4,
 };
+
+#ifdef ATH6KL_SUPPORT_11W
+static const u32 cipher_suites_ar6004[] = {
+	WLAN_CIPHER_SUITE_WEP40,
+	WLAN_CIPHER_SUITE_WEP104,
+	WLAN_CIPHER_SUITE_TKIP,
+	WLAN_CIPHER_SUITE_CCMP,
+	CCKM_KRK_CIPHER_SUITE,
+	WLAN_CIPHER_SUITE_SMS4,
+	WLAN_CIPHER_SUITE_AES_CMAC,
+};
+#endif
 
 static int ath6kl_get_station(struct wiphy *wiphy, struct net_device *dev,
 			      const u8 *mac, struct station_info *sinfo)
@@ -2845,6 +3002,20 @@ static int ath6kl_start_ap(struct wiphy *wiphy, struct net_device *dev,
 			if (info->crypto.wpa_versions & NL80211_WPA_VERSION_2)
 				p.auth_mode |= WPA2_PSK_AUTH;
 			break;
+#ifdef ATH6KL_SUPPORT_11W
+		case WLAN_AKM_SUITE_8021X_SHA256:
+			if (info->crypto.wpa_versions & NL80211_WPA_VERSION_1)
+				ath6kl_err("WLAN_AKM_SUITE_8021X_SHA256 is not supported in wpa_versions %x\n",info->crypto.wpa_versions);
+			if (info->crypto.wpa_versions & NL80211_WPA_VERSION_2)
+				p.auth_mode |= WPA2_AUTH_SHA256;
+			break;
+		case WLAN_AKM_SUITE_PSK_SHA256:
+			if (info->crypto.wpa_versions & NL80211_WPA_VERSION_1)
+				ath6kl_err("WLAN_AKM_SUITE_PSK_SHA256 is not supported in wpa_versions %x\n",info->crypto.wpa_versions);
+			if (info->crypto.wpa_versions & NL80211_WPA_VERSION_2)
+				p.auth_mode |= WPA2_PSK_AUTH_SHA256;
+			break;
+#endif
 		}
 	}
 	if (p.auth_mode == 0)
@@ -3495,6 +3666,9 @@ static struct cfg80211_ops ath6kl_cfg80211_ops = {
 	.get_key = ath6kl_cfg80211_get_key,
 	.del_key = ath6kl_cfg80211_del_key,
 	.set_default_key = ath6kl_cfg80211_set_default_key,
+#ifdef ATH6KL_SUPPORT_11W
+	.set_default_mgmt_key = ath6kl_cfg80211_set_default_mgmt_key,
+#endif
 	.set_wiphy_params = ath6kl_cfg80211_set_wiphy_params,
 	.set_tx_power = ath6kl_cfg80211_set_txpower,
 	.get_tx_power = ath6kl_cfg80211_get_txpower,
@@ -4028,6 +4202,12 @@ int ath6kl_cfg80211_init(struct ath6kl *ar)
 
 	wiphy->cipher_suites = cipher_suites;
 	wiphy->n_cipher_suites = ARRAY_SIZE(cipher_suites);
+#ifdef ATH6KL_SUPPORT_11W
+	if (ar->target_type == TARGET_TYPE_AR6004) {
+		wiphy->cipher_suites = cipher_suites_ar6004;
+		wiphy->n_cipher_suites = ARRAY_SIZE(cipher_suites_ar6004);
+	}
+#endif
 
 #ifdef CONFIG_PM
 	wiphy->wowlan = &ath6kl_wowlan_support;

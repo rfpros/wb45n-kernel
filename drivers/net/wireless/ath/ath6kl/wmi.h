@@ -690,9 +690,16 @@ enum auth_mode {
 	WPA2_PSK_AUTH = 0x10,
 	WPA_AUTH_CCKM = 0x20,
 	WPA2_AUTH_CCKM = 0x40,
+#ifdef ATH6KL_SUPPORT_11W
+	WPA2_AUTH_SHA256	= 0x81,
+	WPA2_PSK_AUTH_SHA256	= 0x80,
+#endif
 };
 
 #define WMI_MAX_KEY_INDEX   3
+#ifdef ATH6KL_SUPPORT_11W
+#define WMI_MAX_SUPPORT_11W_KEY_INDEX	5
+#endif
 
 #define WMI_MAX_KEY_LEN     32
 
@@ -801,6 +808,15 @@ struct wmi_add_cipher_key_cmd {
 struct wmi_delete_cipher_key_cmd {
 	u8 key_index;
 } __packed;
+
+#ifdef ATH6KL_SUPPORT_11W
+struct wmi_add_igtk_key_cmd {
+	u8     key_index;
+	u8     key_len;
+	u8     key_rsc[6];/* key replay sequence counter */
+	u8     key[WMI_MAX_KEY_LEN];
+} __packed;
+#endif
 
 #define WMI_KRK_LEN     16
 #define WMI_CCKM_IE_LEN 26
@@ -2160,6 +2176,12 @@ struct wmi_txe_notify_event {
 	__le32 pkts;
 } __packed;
 
+#ifdef ATH6KL_SUPPORT_11W
+#define RSN_CAP_PREAUTH     0x01
+#define RSN_CAP_MFPR        0x40
+#define RSN_CAP_MFPC        0x80
+#endif
+
 struct wmi_rsn_cap_cmd {
 	__le16 rsn_cap;
 } __packed;
@@ -2680,6 +2702,16 @@ int ath6kl_wmi_addkey_cmd(struct wmi *wmi, u8 if_idx, u8 key_index,
 			  u8 *key_material,
 			  u8 key_op_ctrl, u8 *mac_addr,
 			  enum wmi_sync_flag sync_flag);
+#ifdef ATH6KL_SUPPORT_11W
+int ath6kl_wmi_addigtk_cmd(struct wmi *wmi, u8 if_idx, u8 key_index,
+		enum ath6kl_crypto_type key_type,
+		u8 key_usage, u8 key_len,
+		u8 *key_rsc, unsigned int key_rsc_len,
+		u8 *key_material,
+		u8 key_op_ctrl, u8 *mac_addr,
+		enum wmi_sync_flag sync_flag);
+#endif
+
 int ath6kl_wmi_add_krk_cmd(struct wmi *wmi, u8 if_idx, const u8 *krk);
 int ath6kl_wmi_deletekey_cmd(struct wmi *wmi, u8 if_idx, u8 key_index);
 int ath6kl_wmi_setpmkid_cmd(struct wmi *wmi, u8 if_idx, const u8 *bssid,
