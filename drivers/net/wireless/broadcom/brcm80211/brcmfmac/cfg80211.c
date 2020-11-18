@@ -86,6 +86,8 @@
 
 #define BRCMF_ND_INFO_TIMEOUT		msecs_to_jiffies(2000)
 
+#define BRCMF_PS_MAX_TIMEOUT_MS		2000
+
 /* Dump obss definitions */
 #define ACS_MSRMNT_DELAY		100
 #define CHAN_NOISE_DUMMY		(-80)
@@ -1174,6 +1176,7 @@ brcmf_cfg80211_scan(struct wiphy *wiphy, struct cfg80211_scan_request *request)
 
 	cfg->escan_info.run = brcmf_run_escan;
 	err = brcmf_p2p_scan_prep(wiphy, request, vif);
+
 	if (err)
 		goto scan_out;
 
@@ -2092,6 +2095,7 @@ brcmf_cfg80211_connect(struct wiphy *wiphy, struct net_device *ndev,
 			profile->use_fwsup = BRCMF_PROFILE_FWSUP_NONE;
 		}
 
+
 		if (profile->use_fwsup != BRCMF_PROFILE_FWSUP_NONE) {
 			/* enable firmware supplicant for this interface */
 			err = brcmf_fil_iovar_int_set(ifp, "sup_wpa", 1);
@@ -2102,6 +2106,7 @@ brcmf_cfg80211_connect(struct wiphy *wiphy, struct net_device *ndev,
 		} else {
 			err = brcmf_fil_iovar_int_set(ifp, "sup_wpa", 0);
 		}
+
 
 		if (profile->use_fwsup == BRCMF_PROFILE_FWSUP_PSK)
 			err = brcmf_set_pmk(ifp, sme->crypto.psk,
@@ -2121,6 +2126,7 @@ brcmf_cfg80211_connect(struct wiphy *wiphy, struct net_device *ndev,
 		if (err)
 			goto done;
 	}
+
 	/* Join with specific BSSID and cached SSID
 	 * If SSID is zero join based on BSSID only
 	 */
@@ -2916,6 +2922,12 @@ brcmf_cfg80211_set_power_mgmt(struct wiphy *wiphy, struct net_device *ndev,
 		else
 			bphy_err(drvr, "error (%d)\n", err);
 	}
+
+	err = brcmf_fil_iovar_int_set(ifp, "pm2_sleep_ret",
+				min_t(u32, timeout, BRCMF_PS_MAX_TIMEOUT_MS));
+	if (err)
+		bphy_err(drvr, "Unable to set pm timeout, (%d)\n", err);
+
 done:
 	brcmf_dbg(TRACE, "Exit\n");
 	return err;
