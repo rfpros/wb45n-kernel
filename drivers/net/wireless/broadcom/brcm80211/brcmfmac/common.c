@@ -73,6 +73,11 @@ static int brcmf_eap_restrict;
 module_param_named(eap_restrict, brcmf_eap_restrict, int, 0400);
 MODULE_PARM_DESC(eap_restrict, "Block non-802.1X frames until auth finished");
 
+static char brcmf_regdomain[BRCMF_REGDOMAIN_LEN];
+module_param_string(regdomain, brcmf_regdomain,
+		    BRCMF_REGDOMAIN_LEN, 0400);
+MODULE_PARM_DESC(regdomain, "Regulatory domain/country code");
+
 #ifdef DEBUG
 /* always succeed brcmf_bus_started() */
 static int brcmf_ignore_probe_fail;
@@ -463,6 +468,10 @@ struct brcmf_mp_device *brcmf_get_module_param(struct device *dev,
 	settings->ignore_probe_fail = !!brcmf_ignore_probe_fail;
 #endif
 
+	// Laird - Copy regulory domain module parameter, subject to
+	// override by DT
+	strlcpy(settings->regdomain, brcmf_regdomain, BRCMF_REGDOMAIN_LEN);
+
 	if (bus_type == BRCMF_BUSTYPE_SDIO)
 		settings->bus.sdio.txglomsz = brcmf_sdiod_txglomsz;
 
@@ -487,11 +496,11 @@ struct brcmf_mp_device *brcmf_get_module_param(struct device *dev,
 			}
 		}
 	}
-	if (!found) {
-		/* No platform data for this device, try OF and DMI data */
-		brcmf_dmi_probe(settings, chip, chiprev);
-		brcmf_of_probe(dev, bus_type, settings);
-	}
+
+	// Laird - dmi/of overrides pdata if both exist
+	brcmf_dmi_probe(settings, chip, chiprev);
+	brcmf_of_probe(dev, bus_type, settings);
+
 	return settings;
 }
 
