@@ -1953,6 +1953,7 @@ unlock:
 static void atmci_read_data_pio(struct atmel_mci *host)
 {
 	struct scatterlist	*sg = host->sg;
+	void			*buf = sg_virt(sg);
 	unsigned int		offset = host->pio_offset;
 	struct mmc_data		*data = host->data;
 	u32			value;
@@ -1962,7 +1963,7 @@ static void atmci_read_data_pio(struct atmel_mci *host)
 	do {
 		value = atmci_readl(host, ATMCI_RDR);
 		if (likely(offset + 4 <= sg->length)) {
-			sg_pcopy_to_buffer(sg, 1, &value, sizeof(u32), offset);
+			put_unaligned(value, (u32 *)(buf + offset));
 
 			offset += 4;
 			nbytes += 4;
@@ -1975,11 +1976,11 @@ static void atmci_read_data_pio(struct atmel_mci *host)
 					goto done;
 
 				offset = 0;
+				buf = sg_virt(sg);
 			}
 		} else {
 			unsigned int remaining = sg->length - offset;
-
-			sg_pcopy_to_buffer(sg, 1, &value, remaining, offset);
+			memcpy(buf + offset, &value, remaining);
 			nbytes += remaining;
 
 			flush_dcache_page(sg_page(sg));
@@ -1989,8 +1990,8 @@ static void atmci_read_data_pio(struct atmel_mci *host)
 				goto done;
 
 			offset = 4 - remaining;
-			sg_pcopy_to_buffer(sg, 1, (u8 *)&value + remaining,
-					offset, 0);
+			buf = sg_virt(sg);
+			memcpy(buf, (u8 *)&value + remaining, offset);
 			nbytes += offset;
 		}
 
@@ -2020,6 +2021,7 @@ done:
 static void atmci_write_data_pio(struct atmel_mci *host)
 {
 	struct scatterlist	*sg = host->sg;
+	void			*buf = sg_virt(sg);
 	unsigned int		offset = host->pio_offset;
 	struct mmc_data		*data = host->data;
 	u32			value;
@@ -2028,7 +2030,7 @@ static void atmci_write_data_pio(struct atmel_mci *host)
 
 	do {
 		if (likely(offset + 4 <= sg->length)) {
-			sg_pcopy_from_buffer(sg, 1, &value, sizeof(u32), offset);
+			value = get_unaligned((u32 *)(buf + offset));
 			atmci_writel(host, ATMCI_TDR, value);
 
 			offset += 4;
@@ -2040,12 +2042,13 @@ static void atmci_write_data_pio(struct atmel_mci *host)
 					goto done;
 
 				offset = 0;
+				buf = sg_virt(sg);
 			}
 		} else {
 			unsigned int remaining = sg->length - offset;
 
 			value = 0;
-			sg_pcopy_from_buffer(sg, 1, &value, remaining, offset);
+			memcpy(&value, buf + offset, remaining);
 			nbytes += remaining;
 
 			host->sg = sg = sg_next(sg);
@@ -2056,8 +2059,8 @@ static void atmci_write_data_pio(struct atmel_mci *host)
 			}
 
 			offset = 4 - remaining;
-			sg_pcopy_from_buffer(sg, 1, (u8 *)&value + remaining,
-					offset, 0);
+			buf = sg_virt(sg);
+			memcpy((u8 *)&value + remaining, buf, offset);
 			atmci_writel(host, ATMCI_TDR, value);
 			nbytes += offset;
 		}
