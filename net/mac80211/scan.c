@@ -955,9 +955,6 @@ static void ieee80211_scan_state_decision(struct ieee80211_local *local,
 	bool associated = false;
 	bool tx_empty = true;
 	bool bad_latency;
- #ifndef _REMOVE_LAIRD_MODS_
-	bool ap_active = false;
- #endif
 	struct ieee80211_sub_if_data *sdata;
 	struct ieee80211_channel *next_chan;
 	enum mac80211_scan_state next_scan_state;
@@ -983,14 +980,6 @@ static void ieee80211_scan_state_decision(struct ieee80211_local *local,
 				}
 			}
 		}
- #ifndef _REMOVE_LAIRD_MODS_
-		if (sdata->vif.type == NL80211_IFTYPE_AP ||
-			sdata->vif.type == NL80211_IFTYPE_P2P_GO) {
-			if (sdata->u.ap.beacon) {
-				ap_active = true;
-			}
-		}
- #endif
 	}
 	mutex_unlock(&local->iflist_mtx);
 
@@ -1022,10 +1011,6 @@ static void ieee80211_scan_state_decision(struct ieee80211_local *local,
 			next_scan_state = SCAN_SUSPEND;
 	} else if (associated && bad_latency) {
 		next_scan_state = SCAN_SUSPEND;
-#ifndef _REMOVE_LAIRD_MODS_
-	} else if (ap_active) {
-		next_scan_state = SCAN_SUSPEND;
-#endif
 	} else {
 		next_scan_state = SCAN_SET_CHANNEL;
 	}
